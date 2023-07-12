@@ -3,8 +3,10 @@
 </template>
 
 <script lang="ts" setup>
-import * as monaco from "monaco-editor";
+// import * as monaco from "monaco-editor";
+import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import type { editor } from "monaco-editor";
+import "monaco-editor/esm/vs/basic-languages/monaco.contribution";
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 
 const props = withDefaults(defineProps<MonacoEditorProps>(), {
@@ -41,6 +43,8 @@ const initEditorInstance = () => {
   const editor = monaco.editor.create(editorRef.value, {
     value: privateValue.value,
     automaticLayout: true,
+    language: "markdown",
+    theme: "vs-dark",
   });
 
   editor.onDidChangeModelContent(() => {

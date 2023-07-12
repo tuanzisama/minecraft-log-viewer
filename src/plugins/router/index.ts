@@ -7,11 +7,6 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/index/MainPage.vue"),
   },
   {
-    path: "/viewer",
-    name: "ViewerPage",
-    component: () => import("@/views/viewer/ViewerPage.vue"),
-  },
-  {
     path: "/(.*)",
     redirect: "/",
   },
