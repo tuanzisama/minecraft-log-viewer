@@ -16,17 +16,26 @@
         <section class="file-controll-bar">
           <div class="filelist-info-box">Selected {{ fileList.length }} file(s)</div>
           <div class="file-upload-wrapper">
-            <button @click="onReadySelectFileHandler">+</button>
+            <button @click="onReadySelectFileHandler">
+              <span class="material-symbols-outlined"> add </span>
+            </button>
           </div>
         </section>
-        <ul class="filelist-container">
-          <li class="file-item" :class="{ 'is-active': currentLogFile === item }" v-for="(item, index) in fileList" :key="index" :title="item.file.name" @dblclick="onOpenLogFileHandler(item)">
+        <ul class="filelist-container" @contextmenu.prevent>
+          <li
+            class="file-item"
+            :class="{ 'is-active': currentLogFile === item }"
+            v-for="(item, index) in fileList"
+            :key="index"
+            :title="item.file.name"
+            @dblclick="onOpenLogFileHandler(item)"
+          >
             <p class="file-item__name">{{ item.file.name }}</p>
           </li>
         </ul>
       </div>
       <div class="workspace-wrapper">
-        <div class="fileinfo-container">
+        <div class="fileinfo-container" @contextmenu.prevent>
           <div class="logfile-icon">
             <img src="logos/fabric.png" />
           </div>
@@ -84,7 +93,13 @@ const onFileChangeHandler = async (event: Event) => {
     const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
 
     if (acceptExtension.includes(fileExtension)) {
-      fileList.push({ file, fileSize: prettyBytes(file.size), content: null, isTGZ: fileExtension.endsWith(".gz"), lastModified: new Date(file.lastModified).toLocaleString() });
+      fileList.push({
+        file,
+        fileSize: prettyBytes(file.size),
+        content: null,
+        isTGZ: fileExtension.endsWith(".gz"),
+        lastModified: new Date(file.lastModified).toLocaleString(),
+      });
     }
   });
 };
@@ -222,6 +237,7 @@ interface LogFileRecord {
             color: var(--theme-font-color);
             cursor: pointer;
             transition: all 0.3s;
+            .flex-vhcenter();
           }
         }
       }
