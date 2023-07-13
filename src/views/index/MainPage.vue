@@ -37,7 +37,7 @@
       <div class="workspace-wrapper">
         <div class="fileinfo-container" @contextmenu.prevent>
           <div class="logfile-icon">
-            <img src="logos/fabric.png" />
+            <img src="/logos/fabric.png" />
           </div>
           <div class="logfile-info">
             <span class="logfile-info__name">{{ currentLogFile?.file.name }}</span>
