@@ -76,7 +76,7 @@ const editorTheme = computed(() => {
 });
 
 onMounted(() => {
-  themeMode.value = localStorage.getItem("theme-mode") ?? "light";
+  themeMode.value = (localStorage.getItem("theme-mode") as ThemeSwitchProps["modelValue"]) ?? "light";
 });
 
 const onReadySelectFileHandler = () => {
@@ -88,7 +88,7 @@ const onReadySelectFileHandler = () => {
   inputEl.click();
 };
 
-const onFileChangeHandler = async (event: { target: any; }) => {
+const onFileChangeHandler = async (event: { target: any }) => {
   [...event.target!.files].forEach(async (file: File) => {
     const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
 
