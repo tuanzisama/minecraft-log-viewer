@@ -61,7 +61,7 @@ import MonacoEditor, { MonacoEditorExpose } from "../../components/MonacoEditor"
 import { DecompressZip } from "../../utils/decompress";
 import { CharsetTransformer } from "../../utils/charset-transformer";
 import prettyBytes from "pretty-bytes";
-import ThemeSwitch, { ThemeSwitchProps } from "@/components/ThemeSwitch";
+import ThemeSwitch, { ThemeSwitchProps } from "../../components/ThemeSwitch";
 
 const fileList = reactive<LogFileRecord[]>([]);
 const acceptExtension = [".log.gz", ".tar.gz", ".log"];
@@ -88,7 +88,7 @@ const onReadySelectFileHandler = () => {
   inputEl.click();
 };
 
-const onFileChangeHandler = async (event: Event) => {
+const onFileChangeHandler = async (event: { target: any; }) => {
   [...event.target!.files].forEach(async (file: File) => {
     const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
 

@@ -1,9 +1,11 @@
+// @ts-nocheck
+
 // import * as monaco from "monaco-editor";
 // import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import "monaco-editor/esm/vs/basic-languages/monaco.contribution";
 
 import * as monaco from "monaco-editor";
-import loader from '@monaco-editor/loader';
+import loader from "@monaco-editor/loader";
 
 self.MonacoEnvironment = {
   getWorker: function (workerId, label) {
