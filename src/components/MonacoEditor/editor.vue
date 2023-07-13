@@ -3,18 +3,18 @@
 </template>
 
 <script lang="ts" setup>
-// import * as monaco from "monaco-editor";
-import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-import type { editor } from "monaco-editor";
-import "monaco-editor/esm/vs/basic-languages/monaco.contribution";
+import { loader } from "./monaco";
+import { editor } from "monaco-editor";
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 
 const props = withDefaults(defineProps<MonacoEditorProps>(), {
   modelValue: "",
+  theme: "vs",
 });
 
 const editorRef = ref();
 const editorInstance = shallowRef<editor.IStandaloneCodeEditor | null>(null);
+const monaco = shallowRef<typeof import("monaco-editor/esm/vs/editor/editor.api")>();
 const emit = defineEmits(["update:modelValue"]);
 
 const privateValue = computed({
@@ -26,7 +26,7 @@ watch(
   () => privateValue.value,
   (newVal) => {
     if (newVal !== getEditorModel()?.getValue()) {
-      getEditorModel().setValue(newVal);
+      getEditorModel()?.setValue(newVal);
     }
   }
 );
@@ -40,45 +40,69 @@ onBeforeUnmount(() => {
 });
 
 const initEditorInstance = () => {
-  const editor = monaco.editor.create(editorRef.value, {
-    value: privateValue.value,
-    automaticLayout: true,
-    language: "markdown",
-    theme: "vs-dark",
+  loader.config({
+    paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs" },
+    "vs/nls": { availableLanguages: { "*": "zh-cn" } },
   });
 
-  editor.onDidChangeModelContent(() => {
-    const value = getEditorModel().getValue();
-    privateValue.value = value;
-  });
+  loader.init().then(($monaco) => {
+    monaco.value = $monaco;
+    const editor = $monaco.editor.create(editorRef.value, {
+      value: privateValue.value,
+      automaticLayout: true,
+      language: "markdown",
+      theme: props.theme,
+    });
 
-  editorInstance.value = editor;
+    editor.onDidChangeModelContent(() => {
+      const value = getEditorModel()?.getValue();
+      if (value) privateValue.value = value;
+    });
+
+    editorInstance.value = editor;
+  });
 };
 
-const getEditorModel = (): editor.ITextModel => {
-  return monaco.editor.getModels()[0];
+const getEditorModel = (): editor.ITextModel | null => {
+  return editorInstance.value?.getModel() ?? null;
+  //   return monaco.editor.getModels()[0];
 };
 
 const disposeEditorInstance = () => {
   editorInstance.value?.dispose();
 };
 
+const scrollToVertex = () => {
+  editorInstance.value?.setScrollTop(0);
+  editorInstance.value?.setScrollLeft(0);
+};
+
+const setTheme = (theme: EditorThemeType) => {
+  monaco.value?.editor.setTheme(theme);
+};
+
 defineExpose<MonacoEditorExpose>({
-  ref: editorRef,
+  $ref: editorRef,
   dispose: disposeEditorInstance,
+  scrollToVertex,
+  setTheme,
 });
 </script>
 
 <script lang="ts">
 import { Ref } from "vue";
+export type EditorThemeType = "vs" | "vs-dark" | "hc-black" | "hc-light" | string;
 
-interface MonacoEditorProps {
+export interface MonacoEditorProps {
   modelValue: string;
+  theme: EditorThemeType;
 }
 
-interface MonacoEditorExpose {
-  ref: Ref<editor.IStandaloneCodeEditor | null>;
+export interface MonacoEditorExpose {
+  $ref: Ref<editor.IStandaloneCodeEditor | null>;
   dispose: () => void;
+  scrollToVertex: () => void;
+  setTheme: (theme: EditorThemeType) => void;
 }
 </script>
 

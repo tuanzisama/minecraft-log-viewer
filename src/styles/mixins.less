@@ -1,17 +1,17 @@
-.custom-scrollbar($size: 8px, $radius: 8px, $bgColor: rgba(238, 236, 236, 0.3)) {
+.custom-scrollbar(@size: 8px, @radius: 8px, @bgColor: rgba(238, 236, 236, 0.3)) {
   &::-webkit-scrollbar {
     background-color: transparent;
-    width: $size;
-    height: $size;
+    width: @size;
+    height: @size;
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: $bgColor;
-    border-radius: $radius;
+    background-color: @bgColor;
+    border-radius: @radius;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background-color: darken($bgColor, 5%);
+    background-color: darken(@bgColor, 5%);
   }
 
   &::-webkit-scrollbar-button {
@@ -30,6 +30,11 @@
 }
 
 .flex-vcenter() {
+  display: flex;
+  justify-content: center;
+}
+
+.flex-hcenter() {
   display: flex;
   align-items: center;
 }

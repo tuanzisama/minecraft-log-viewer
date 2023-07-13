@@ -6,6 +6,11 @@ const routes: Array<RouteRecordRaw> = [
     name: "MainPage",
     component: () => import("@/views/index/MainPage.vue"),
   },
+  //   {
+  //     path: "/ccc",
+  //     name: "MainPage",
+  //     component: () => import("@/views/index/Copy.vue"),
+  //   },
   {
     path: "/(.*)",
     redirect: "/",
