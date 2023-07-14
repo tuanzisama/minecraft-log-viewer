@@ -10,7 +10,7 @@
     </section>
     <ul class="filelist-container" @contextmenu.prevent>
       <t-dropdown :options="[{ content: '操作一', value: 1 }]" trigger="context-menu" placement="right-top" v-for="(item, index) in fileStore.fileList" :key="index">
-        <li class="file-item" :class="{ 'is-active': currentLogFile === item }" :title="item.file.name" @dblclick="onOpenLogFileHandler(item)">
+        <li class="file-item" :class="{ 'is-active': fileStore.currentRecord === item }" :title="item.file.name" @dblclick="onOpenLogFileHandler(item)">
           <p class="file-item__name">{{ item.file.name }}</p>
         </li>
       </t-dropdown>
