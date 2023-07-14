@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 
 interface State {
   fileList: LogFile[];
+  selectedFileIndex: number[];
   currentRecord: LogFile | null;
 }
 
@@ -16,8 +17,14 @@ export interface LogFile {
 export const useFileStore = defineStore("file", {
   state: (): State => ({
     fileList: [],
+    selectedFileIndex: [],
     currentRecord: null,
   }),
+  getters: {
+    sortSelectedFileIndex: (state) => {
+      return state.selectedFileIndex.sort();
+    },
+  },
   actions: {},
   persist: false,
 });

@@ -9,8 +9,24 @@
       </div>
     </section>
     <ul class="filelist-container" @contextmenu.prevent>
-      <t-dropdown :options="[{ content: '操作一', value: 1 }]" trigger="context-menu" placement="right-top" v-for="(item, index) in fileStore.fileList" :key="index">
-        <li class="file-item" :class="{ 'is-active': fileStore.currentRecord === item }" :title="item.file.name" @dblclick="onOpenLogFileHandler(item)">
+      <t-dropdown
+        :options="[{ content: '操作一', value: 1 }]"
+        trigger="context-menu"
+        placement="right-top"
+        v-for="(item, index) in fileStore.fileList"
+        :key="index"
+      >
+        <li
+          class="file-item"
+          :class="{
+            'is-active': fileStore.currentRecord === item,
+            'is-selected': fileStore.selectedFileIndex.includes(index),
+          }"
+          :title="item.file.name"
+          @click.ctrl.stop="($event) => onCtrlClickHandler($event, item, index)"
+          @click.shift.stop="($event) => onShiftClickHandler($event, item, index)"
+          @dblclick="($event) => onOpenLogFileHandler($event, item)"
+        >
           <p class="file-item__name">{{ item.file.name }}</p>
         </li>
       </t-dropdown>
@@ -19,15 +35,31 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
 import { LogFile, useFileStore } from "../../plugins/store/modules/file";
 import { DecompressZip } from "../../utils/decompress";
 import { CharsetTransformer } from "../../utils/charset-transformer";
 import prettyBytes from "pretty-bytes";
+import { onBeforeUnmount, onMounted, ref } from "vue";
+import { isEmpty, pull } from "lodash";
+import { generateNumberArray } from "../../utils/util";
 
 const fileStore = useFileStore();
 const acceptExtension = [".log.gz", ".tar.gz", ".log"];
 const emit = defineEmits<FileListEmits>();
+
+onMounted(() => {
+  document.body.addEventListener("click", unselectFileItem);
+});
+
+onBeforeUnmount(() => {
+  document.body.removeEventListener("click", unselectFileItem);
+});
+
+const unselectFileItem = () => {
+  if (!isEmpty(fileStore.selectedFileIndex)) {
+    fileStore.selectedFileIndex = [];
+  }
+};
 
 const onReadySelectFileHandler = () => {
   const inputEl = document.createElement("input");
@@ -54,7 +86,8 @@ const onFileChangeHandler = async (event: { target: any }) => {
   });
 };
 
-const onOpenLogFileHandler = async (item: LogFile) => {
+const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
+  if ($event.shiftKey) return;
   if (item.content == null) {
     emit("on-load-before", item);
     try {
@@ -79,6 +112,46 @@ const onOpenLogFileHandler = async (item: LogFile) => {
   } else {
     fileStore.currentRecord = item;
     emit("on-loaded", item);
+  }
+};
+
+const firstFileItemIndex = ref(-1);
+const onShiftClickHandler = ($event: MouseEvent, item: LogFile, index: number) => {
+  if ($event.ctrlKey) return;
+
+  if (fileStore.selectedFileIndex.includes(index)) {
+    fileStore.selectedFileIndex = pull(fileStore.selectedFileIndex, index);
+    if (isEmpty(fileStore.sortSelectedFileIndex)) {
+      firstFileItemIndex.value = -1;
+    }
+  } else {
+    if (isEmpty(fileStore.sortSelectedFileIndex)) {
+      fileStore.sortSelectedFileIndex.push(index);
+      firstFileItemIndex.value = index;
+    } else {
+      if (index === firstFileItemIndex.value + 1 || index === firstFileItemIndex.value - 1) {
+        fileStore.sortSelectedFileIndex.push(index);
+      } else {
+        const numberArr = generateNumberArray(firstFileItemIndex.value, index);
+        console.info(numberArr);
+        fileStore.selectedFileIndex = numberArr;
+      }
+    }
+  }
+};
+
+const onCtrlClickHandler = ($event: MouseEvent, item: LogFile, index: number) => {
+  if ($event.shiftKey) return;
+  if (fileStore.selectedFileIndex.includes(index)) {
+    fileStore.selectedFileIndex = pull(fileStore.selectedFileIndex, index);
+    if (isEmpty(fileStore.sortSelectedFileIndex)) {
+      firstFileItemIndex.value = -1;
+    }
+  } else {
+    if (isEmpty(fileStore.sortSelectedFileIndex)) {
+      firstFileItemIndex.value = index;
+    }
+    fileStore.sortSelectedFileIndex.push(index);
   }
 };
 </script>
@@ -144,10 +217,23 @@ export interface FileListEmits {
       border-radius: 3px;
       user-select: none;
       &.is-active {
-        background-color: var(--theme-file-item-active);
+        background-color: var(--theme-file-item-active-background);
+        .file-item__name {
+          font-weight: 700 !important;
+        }
       }
-      &:hover {
-        background-color: var(--theme-file-item-hover);
+      &.is-selected {
+        background-color: var(--theme-file-item-selected-background) !important;
+        color: var(--theme-file-item-selected-color) !important;
+        .file-item__name {
+          font-weight: 700 !important;
+        }
+      }
+      &:hover:not(.is-active) {
+        color: var(--theme-file-item-hover-color);
+        .file-item__name {
+          font-weight: 400 !important;
+        }
       }
       &__name {
         font-family: "JetBrains Mono", monospace;

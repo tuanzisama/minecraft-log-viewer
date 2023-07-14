@@ -87,16 +87,20 @@ const onLoadedHandler = (value: LogFile) => {
   &[theme-mode="light"] {
     --theme-background: #f8f8f9;
     --theme-box-background: darken(#f8f8f9, 10%);
-    --theme-font-color: #17233d;
-    --theme-file-item-hover: var(--theme-background);
-    --theme-file-item-active: #b8b3b3;
+    --theme-font-color: #1f293f;
+    --theme-file-item-hover-color: #212121;
+    --theme-file-item-active-background: #b8b3b3;
+    --theme-file-item-selected-background: #d4d2d2;
+    --theme-file-item-selected-color: #2962ff;
   }
   &[theme-mode="dark"] {
     --theme-background: #192227;
     --theme-box-background: lighten(#192227, 10%);
-    --theme-font-color: #fff;
-    --theme-file-item-hover: var(--theme-background);
-    --theme-file-item-active: #758085;
+    --theme-font-color: #f5f5f5;
+    --theme-file-item-hover-color: #5f7a87;
+    --theme-file-item-active-background: #758085;
+    --theme-file-item-selected-background: #6a787e;
+    --theme-file-item-selected-color: #00e5ff;
   }
 
   a {
@@ -140,6 +144,7 @@ const onLoadedHandler = (value: LogFile) => {
         height: 60px;
         margin-bottom: var(--theme-padding);
         padding: calc(var(--theme-padding) / 2);
+        font-family: "JetBrains Mono", monospace;
         .common-box();
         .flex-hcenter();
         .logfile-icon {
@@ -150,6 +155,7 @@ const onLoadedHandler = (value: LogFile) => {
           border-radius: 5px;
           margin-right: 10px;
           transition: all 0.3s;
+          user-select: none;
           img {
             .img-contain();
           }
