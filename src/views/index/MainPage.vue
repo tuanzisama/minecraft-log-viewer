@@ -1,6 +1,5 @@
 <template>
-  <!-- <div class="main-page" theme-mode="light"> -->
-  <div class="main-page" :theme-mode="themeMode">
+  <div class="main-page" :theme-mode="appStore.theme">
     <section class="main-header">
       <p>Minecraft Log Viewer</p>
       <div class="page-controll-box">
@@ -8,47 +7,26 @@
         <a href="https://mcg.tuanzi.ink/" target="_blank">
           <span class="material-symbols-outlined"> palette </span>
         </a>
-        <theme-switch v-model="themeMode" @on-change="onThemeChangeHandler" />
+        <theme-switch v-model="appStore.theme" @on-change="onThemeChangeHandler" />
       </div>
     </section>
     <div class="main-container">
-      <div class="file-wrapper">
-        <section class="file-controll-bar">
-          <div class="filelist-info-box">Selected {{ fileList.length }} file(s)</div>
-          <div class="file-upload-wrapper">
-            <button @click="onReadySelectFileHandler">
-              <span class="material-symbols-outlined"> add </span>
-            </button>
-          </div>
-        </section>
-        <ul class="filelist-container" @contextmenu.prevent>
-          <li
-            class="file-item"
-            :class="{ 'is-active': currentLogFile === item }"
-            v-for="(item, index) in fileList"
-            :key="index"
-            :title="item.file.name"
-            @dblclick="onOpenLogFileHandler(item)"
-          >
-            <p class="file-item__name">{{ item.file.name }}</p>
-          </li>
-        </ul>
-      </div>
+      <file-list @on-load-before="onLoadBeforeHandler" @on-load-error="onLoadErrorHandler" @on-loaded="onLoadedHandler" />
       <div class="workspace-wrapper">
         <div class="fileinfo-container" @contextmenu.prevent>
           <div class="logfile-icon">
             <img src="/logos/fabric.png" />
           </div>
           <div class="logfile-info">
-            <span class="logfile-info__name">{{ currentLogFile?.file.name }}</span>
+            <span class="logfile-info__name">{{ fileStore.currentRecord?.file.name }}</span>
             <p class="logfile-info__desc">
-              <span class="logfile-info__size">{{ currentLogFile?.fileSize }}</span>
-              <span class="logfile-info__lastmodi">{{ currentLogFile?.lastModified }}</span>
+              <span class="logfile-info__size">{{ fileStore.currentRecord?.fileSize }}</span>
+              <span class="logfile-info__lastmodi">{{ fileStore.currentRecord?.fileLastModified }}</span>
             </p>
           </div>
         </div>
         <div class="workspace-container">
-          <monaco-editor ref="monacoEditorRef" :theme="editorTheme" v-model="editorValue" />
+          <monaco-editor ref="monacoEditorRef" :theme="defaultEditorTheme" v-model="editorValue" />
         </div>
       </div>
     </div>
@@ -56,77 +34,22 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, ref } from "vue";
 import MonacoEditor, { MonacoEditorExpose } from "../../components/MonacoEditor";
-import { DecompressZip } from "../../utils/decompress";
-import { CharsetTransformer } from "../../utils/charset-transformer";
-import prettyBytes from "pretty-bytes";
-import ThemeSwitch, { ThemeSwitchProps } from "../../components/ThemeSwitch";
+import ThemeSwitch from "../../components/ThemeSwitch";
+import FileList from "../../components/FileList";
+import { useAppStore } from "../../plugins/store/modules/app";
+import { LogFile, useFileStore } from "../../plugins/store/modules/file";
 
-const fileList = reactive<LogFileRecord[]>([]);
-const acceptExtension = [".log.gz", ".tar.gz", ".log"];
-const currentLogFile = ref<LogFileRecord | null>(null);
+const appStore = useAppStore();
+const fileStore = useFileStore();
 const editorValue = ref(`[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Welcome!`);
-const themeMode = ref<ThemeSwitchProps["modelValue"]>("light");
 const monacoEditorRef = ref<MonacoEditorExpose>();
 
-const editorTheme = computed(() => {
-  if (themeMode.value === "light") return "vs";
-  else if (themeMode.value === "dark") return "vs-dark";
+const defaultEditorTheme = computed(() => {
+  if (appStore.theme === "light") return "vs";
+  else if (appStore.theme === "dark") return "vs-dark";
 });
-
-onMounted(() => {
-  themeMode.value = (localStorage.getItem("theme-mode") as ThemeSwitchProps["modelValue"]) ?? "light";
-});
-
-const onReadySelectFileHandler = () => {
-  const inputEl = document.createElement("input");
-  inputEl.setAttribute("type", "file");
-  inputEl.setAttribute("accept", acceptExtension.join(","));
-  inputEl.setAttribute("multiple", "");
-  inputEl.addEventListener("change", onFileChangeHandler);
-  inputEl.click();
-};
-
-const onFileChangeHandler = async (event: { target: any }) => {
-  [...event.target!.files].forEach(async (file: File) => {
-    const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
-
-    if (acceptExtension.includes(fileExtension)) {
-      fileList.push({
-        file,
-        fileSize: prettyBytes(file.size),
-        content: null,
-        isTGZ: fileExtension.endsWith(".gz"),
-        lastModified: new Date(file.lastModified).toLocaleString(),
-      });
-    }
-  });
-};
-
-const onOpenLogFileHandler = async (item: LogFileRecord) => {
-  currentLogFile.value = item;
-
-  if (item.content == null) {
-    editorValue.value = `[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Loading...`;
-
-    let buffer = null;
-    if (item.isTGZ) {
-      const decompress = new DecompressZip();
-      buffer = await decompress.toArrayBuffer(item.file);
-    } else {
-      buffer = await item.file.arrayBuffer();
-    }
-
-    const charsetTrasnformer = new CharsetTransformer({ label: "gb2312" });
-    const response = charsetTrasnformer.decode(buffer);
-
-    item.content = response;
-  }
-
-  monacoEditorRef.value?.scrollToVertex();
-  editorValue.value = item.content;
-};
 
 const onThemeChangeHandler = (val: string) => {
   if (val === "light") {
@@ -134,18 +57,20 @@ const onThemeChangeHandler = (val: string) => {
   } else if (val === "dark") {
     monacoEditorRef.value?.setTheme("vs-dark");
   }
-  localStorage.setItem("theme-mode", val);
 };
-</script>
 
-<script lang="ts">
-interface LogFileRecord {
-  file: File;
-  fileSize: string;
-  lastModified: string;
-  isTGZ: boolean;
-  content: string | null;
-}
+const onLoadBeforeHandler = () => {
+  editorValue.value = `[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Loading...`;
+};
+
+const onLoadErrorHandler = (value: LogFile, error: Error) => {
+  //   console.info(value, error.message);
+};
+
+const onLoadedHandler = (value: LogFile) => {
+  monacoEditorRef.value?.scrollToVertex();
+  editorValue.value = value?.content ?? "";
+};
 </script>
 
 <style lang="less" scoped>
@@ -207,68 +132,6 @@ interface LogFileRecord {
     height: 0;
     display: flex;
     padding: 0 var(--theme-padding) var(--theme-padding) var(--theme-padding);
-    .file-wrapper {
-      width: 250px;
-      margin-right: var(--theme-padding);
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      padding: calc(var(--theme-padding) / 2);
-      .common-box();
-      .file-controll-bar {
-        flex-shrink: 0;
-        position: relative;
-        .flex-vhcenter();
-        padding-bottom: calc(var(--theme-padding) / 2);
-        margin-bottom: calc(var(--theme-padding) / 2);
-        border-bottom: 1px solid #b8b8b8;
-        .filelist-info-box {
-          flex: 1;
-          font-size: 12px;
-        }
-        .file-upload-wrapper {
-          button {
-            width: 40px;
-            height: 40px;
-            border: none;
-            outline: none;
-            background-color: var(--theme-background);
-            border-radius: var(--theme-box-border-radius);
-            color: var(--theme-font-color);
-            cursor: pointer;
-            transition: all 0.3s;
-            .flex-vhcenter();
-          }
-        }
-      }
-      .filelist-container {
-        flex: 1;
-        height: 0;
-        overflow-y: auto;
-        .custom-scrollbar();
-        .file-item {
-          height: 23px;
-          padding: 5px;
-          cursor: pointer;
-          .flex-hcenter();
-          transition: all 0.1s;
-          border-radius: 3px;
-          user-select: none;
-          &.is-active {
-            background-color: var(--theme-file-item-active);
-          }
-          &:hover {
-            background-color: var(--theme-file-item-hover);
-          }
-          &__name {
-            font-family: "JetBrains Mono", monospace;
-            font-size: 12px;
-            font-weight: 200;
-            .text-ellipsis();
-          }
-        }
-      }
-    }
     .workspace-wrapper {
       flex: 1;
       display: flex;
@@ -318,11 +181,5 @@ interface LogFileRecord {
       }
     }
   }
-}
-
-.common-box() {
-  border-radius: var(--theme-box-border-radius);
-  background-color: var(--theme-box-background);
-  transition: background-color 0.3s;
 }
 </style>
