@@ -12,6 +12,5 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Switch: typeof import('./src/components/ThemeSwitch/switch.vue')['default']
-    TDropdown: typeof import('tdesign-vue-next')['Dropdown']
   }
 }
