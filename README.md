@@ -22,13 +22,15 @@ Auto-decompress `.log.gz`, `.tar.gz` and read log file(s).
 - Ehh...
 
 ### In progress...
-- [ ] Auto-detect log type
-- [ ] Merge log file(s)
-- [ ] Search in entire files
-- [ ] Localization
-- [ ] Auto-detect log content charset.
-- [ ] Add .log syntax highlight to `Monaco Editor`
+- [ ] Auto-detect log type 👀
+- [ ] Merge log file(s) 🎞️
+- [ ] Search in entire files 🔎
+- [ ] Localization 📃
+- [ ] Auto-detect log content charset 🕶️
+- [ ] Add .log syntax highlight to `Monaco Editor` ✨
 - [ ] UI improve 🤔
+- [ ] Log share 😏
+- [ ] Support PWA 🎈
 - [ ] Other ideas...
 
 ### Other project(s)
