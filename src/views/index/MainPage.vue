@@ -11,7 +11,7 @@
       </div>
     </section>
     <div class="main-container">
-      <file-list @on-load-before="onLoadBeforeHandler" @on-load-error="onLoadErrorHandler" @on-loaded="onLoadedHandler" @on-removed="onRemovedHandler" />
+      <file-list charset="gb2312" @on-load-before="onLoadBeforeHandler" @on-load-error="onLoadErrorHandler" @on-change="onFilelistChangeHandler" @on-removed="onRemovedHandler" />
       <div class="workspace-wrapper">
         <div class="fileinfo-container" @contextmenu.prevent>
           <div class="logfile-icon">
@@ -75,7 +75,7 @@ const onLoadErrorHandler = (value: LogFile, error: Error) => {
   //   console.info(value, error.message);
 };
 
-const onLoadedHandler = (value: LogFile) => {
+const onFilelistChangeHandler = (value: LogFile) => {
   monacoEditorRef.value?.scrollToVertex();
   editorValue.value = value?.content ?? "";
 };

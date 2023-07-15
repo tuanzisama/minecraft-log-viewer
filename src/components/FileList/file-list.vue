@@ -15,6 +15,8 @@
         placement="right-top"
         v-for="(item, index) in fileStore.fileList"
         :key="index"
+        :popup-props="{ overlayClassName: 'filelist-contextmenu', onVisibleChange: (visible, context) => onDropdownVisibleChangeHandler(item, visible, context) }"
+        :min-column-width="300"
         @click="(dropdownItem, context) => onDropdownClickHandler(item, dropdownItem, context)"
       >
         <li
@@ -40,17 +42,30 @@ import { LogFile, useFileStore } from "../../plugins/store/modules/file";
 import { DecompressZip } from "../../utils/decompress";
 import { CharsetTransformer } from "../../utils/charset-transformer";
 import prettyBytes from "pretty-bytes";
-import { onBeforeUnmount, onMounted, ref } from "vue";
-import { isEmpty, remove, slice } from "lodash";
-import { DropdownOption, NotifyPlugin } from "tdesign-vue-next";
+import { computed, h, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
+import { isEmpty, remove, slice, truncate } from "lodash";
+import { DropdownOption, NotifyPlugin, PopupVisibleChangeContext, Button } from "tdesign-vue-next";
+import { downloadFile } from "../../utils/util";
+
+const props = withDefaults(defineProps<FileListProps>(), {
+  charset: "utf-8",
+});
 
 const fileStore = useFileStore();
 const acceptExtension = [".log.gz", ".tar.gz", ".log"];
 const emit = defineEmits<FileListEmits>();
-const dropdownOptions = [
-  { content: "合并下载", value: "merge-download", divider: true, disabled: true },
-  { content: "移除", value: "remove", theme: "error" },
-] as DropdownOption[];
+const currentOpenDropdownLogFile = shallowRef<LogFile | null>(null);
+const firstFileItemIndex = ref(-1);
+
+const dropdownOptions = computed<DropdownOption[]>(() => {
+  let selectFileSize = fileStore.selectedFileList.length;
+  let fileName = currentOpenDropdownLogFile.value?.file.name ?? "";
+  return [
+    { content: truncate(fileName, { length: 24 }), value: "file-info", divider: true },
+    { content: "Merge download...", value: "merge-download", disabled: selectFileSize === 0, prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "merge") },
+    { content: selectFileSize === 0 ? "Remove" : `Remove ${selectFileSize} file(s)`, value: "remove", theme: "error", prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "delete") },
+  ];
+});
 
 onMounted(() => {
   document.body.addEventListener("click", unselectFileItem);
@@ -60,10 +75,17 @@ onBeforeUnmount(() => {
   document.body.removeEventListener("click", unselectFileItem);
 });
 
-const unselectFileItem = () => {
-  if (!isEmpty(fileStore.selectedFileList)) {
-    fileStore.selectedFileList = [];
+const unselectFileItem = (event: MouseEvent) => {
+  if (event.target !== null) {
+    const closestElement = (event.target as Element).closest(".filelist-contextmenu");
+    if (closestElement === null && !isEmpty(fileStore.selectedFileList)) {
+      fileStore.selectedFileList = [];
+    }
   }
+};
+
+const onDropdownVisibleChangeHandler = (item: LogFile, visible: boolean, context: PopupVisibleChangeContext) => {
+  currentOpenDropdownLogFile.value = visible ? item : null;
 };
 
 const onReadySelectFileHandler = () => {
@@ -80,51 +102,60 @@ const onFileChangeHandler = async (event: { target: any }) => {
     const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
 
     if (acceptExtension.includes(fileExtension)) {
-      fileStore.fileList.push({
+      const logFile = {
         file,
         fileSize: prettyBytes(file.size),
         content: null,
         isTarGZ: fileExtension.endsWith(".gz"),
         fileLastModified: new Date(file.lastModified).toLocaleString(),
-      });
+      };
+      fileStore.fileList.push(logFile);
     }
   });
 };
 
 const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
   if ($event.shiftKey) return;
+  emit("on-load-before", item);
   if (item.content == null) {
-    emit("on-load-before", item);
-    try {
-      let buffer = null;
-      if (item.isTarGZ) {
-        const decompress = new DecompressZip();
-        buffer = await decompress.toArrayBuffer(item.file);
-      } else {
-        buffer = await item.file.arrayBuffer();
-      }
-
-      const charsetTrasnformer = new CharsetTransformer({ label: "gb2312" });
-      const response = charsetTrasnformer.decode(buffer);
-      item.content = response;
-
-      fileStore.currentRecord = item;
-      emit("on-loaded", item);
-    } catch (error) {
-      console.error(error);
-      emit("on-load-error", item, error as Error);
-    }
+    const response = await loadFileContent(item);
+    emit("on-loaded", item);
+    item.content = response;
+    fileStore.currentRecord = item;
   } else {
     fileStore.currentRecord = item;
-    emit("on-loaded", item);
+  }
+  emit("on-change", item);
+};
+
+const loadFileContent = async (item: LogFile) => {
+  try {
+    let buffer = null;
+    if (item.isTarGZ) {
+      const decompress = new DecompressZip();
+      buffer = await decompress.toArrayBuffer(item.file);
+    } else {
+      buffer = await item.file.arrayBuffer();
+    }
+    const charsetTrasnformer = new CharsetTransformer({ label: props.charset });
+    const response = charsetTrasnformer.decode(buffer);
+
+    return response;
+  } catch (error) {
+    console.error(error);
+    emit("on-load-error", item, error as Error);
+    return null;
   }
 };
 
-const onDropdownClickHandler = (item: LogFile, dropdownItem: DropdownOption, context: { e: MouseEvent }) => {
+const onDropdownClickHandler = async (item: LogFile, dropdownItem: DropdownOption, context: { e: MouseEvent }) => {
   context.e.stopPropagation();
-  if (dropdownItem.value === "remove") {
+  if (dropdownItem.value === "merge-download") {
+    await fileMergeDownloadHandler();
+  } else if (dropdownItem.value === "remove") {
     fileRemoveHandler(item);
   }
+  fileStore.selectedFileList = [];
 };
 
 const fileRemoveHandler = (item: LogFile) => {
@@ -146,15 +177,41 @@ const fileRemoveHandler = (item: LogFile) => {
     });
     emit("on-removed", [...fileStore.selectedFileList]);
   }
-  fileStore.selectedFileList = [];
 };
 
-const firstFileItemIndex = ref(-1);
+const fileMergeDownloadHandler = async () => {
+  const contents: string[] = [];
+
+  for (let element of fileStore.selectedFileList) {
+    if (element.content == null) {
+      const response = await loadFileContent(element);
+      contents.push(response as string);
+    } else {
+      contents.push(element.content);
+    }
+  }
+
+  const mergeFileBlob = new Blob([contents.join("")], { type: "text/plain;charset=utf8" });
+  const blobSize = prettyBytes(mergeFileBlob.size);
+  const onClickHandler = () => {
+    downloadFile(mergeFileBlob, `log-merge-${Date.now()}.log`);
+    NotifyPlugin.close(fileMergeNotify);
+  };
+  const fileMergeNotify = NotifyPlugin.success({
+    title: "File Merged!",
+    content: `${fileStore.selectedFileList.length} file(s) are merge successfully!`,
+    duration: 30000,
+    placement: "bottom-right",
+    footer: () => [h("div", { class: "t-notification__detail" }, [h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`)])],
+  });
+};
+
 const onShiftClickHandler = ($event: MouseEvent, item: LogFile, index: number) => {
   if ($event.ctrlKey) return;
 
   if (fileStore.sortSelectedFileIndex.includes(index)) {
-    remove(fileStore.selectedFileList, item);
+    const sliceArr = sliceFileList(firstFileItemIndex.value, index);
+    fileStore.selectedFileList = sliceArr;
     if (isEmpty(fileStore.sortSelectedFileIndex)) {
       firstFileItemIndex.value = -1;
     }
@@ -163,12 +220,8 @@ const onShiftClickHandler = ($event: MouseEvent, item: LogFile, index: number) =
       fileStore.selectedFileList.push(item);
       firstFileItemIndex.value = index;
     } else {
-      if (index === firstFileItemIndex.value + 1 || index === firstFileItemIndex.value - 1) {
-        fileStore.sortSelectedFileIndex.push(index);
-      } else {
-        const sliceArr = sliceFileList(firstFileItemIndex.value, index);
-        fileStore.selectedFileList = sliceArr;
-      }
+      const sliceArr = sliceFileList(firstFileItemIndex.value, index);
+      fileStore.selectedFileList = sliceArr;
     }
   }
 };
@@ -195,14 +248,15 @@ const sliceFileList = (start: number, end: number) => {
 </script>
 
 <script lang="ts">
-export interface ThemeSwitchProps {
-  modelValue: "light" | "dark";
+export interface FileListProps {
+  charset: string;
 }
 
 export interface FileListEmits {
   (event: "on-load-before", file: LogFile): void;
   (event: "on-load-error", file: LogFile, error: Error): void;
   (event: "on-loaded", value: LogFile): void;
+  (event: "on-change", value: LogFile): void;
   (event: "on-removed", value: LogFile[]): void;
 }
 </script>
@@ -279,6 +333,20 @@ export interface FileListEmits {
         font-size: 12px;
         font-weight: 200;
         .text-ellipsis();
+      }
+    }
+  }
+}
+</style>
+
+<style lang="less">
+.filelist-contextmenu {
+  .t-dropdown__menu > div:first-child {
+    .t-dropdown__item {
+      pointer-events: none;
+      &:hover,
+      &:active {
+        background-color: inherit !important;
       }
     }
   }
