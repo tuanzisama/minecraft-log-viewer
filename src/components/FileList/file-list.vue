@@ -10,17 +10,18 @@
     </section>
     <ul class="filelist-container" @contextmenu.prevent>
       <t-dropdown
-        :options="[{ content: '操作一', value: 1 }]"
+        :options="dropdownOptions"
         trigger="context-menu"
         placement="right-top"
         v-for="(item, index) in fileStore.fileList"
         :key="index"
+        @click="(dropdownItem, context) => onDropdownClickHandler(item, dropdownItem, context)"
       >
         <li
           class="file-item"
           :class="{
             'is-active': fileStore.currentRecord === item,
-            'is-selected': fileStore.selectedFileIndex.includes(index),
+            'is-selected': fileStore.sortSelectedFileIndex.includes(index),
           }"
           :title="item.file.name"
           @click.ctrl.stop="($event) => onCtrlClickHandler($event, item, index)"
@@ -40,12 +41,16 @@ import { DecompressZip } from "../../utils/decompress";
 import { CharsetTransformer } from "../../utils/charset-transformer";
 import prettyBytes from "pretty-bytes";
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { isEmpty, pull } from "lodash";
-import { generateNumberArray } from "../../utils/util";
+import { isEmpty, remove, slice } from "lodash";
+import { DropdownOption, NotifyPlugin } from "tdesign-vue-next";
 
 const fileStore = useFileStore();
 const acceptExtension = [".log.gz", ".tar.gz", ".log"];
 const emit = defineEmits<FileListEmits>();
+const dropdownOptions = [
+  { content: "合并下载", value: "merge-download", divider: true, disabled: true },
+  { content: "移除", value: "remove", theme: "error" },
+] as DropdownOption[];
 
 onMounted(() => {
   document.body.addEventListener("click", unselectFileItem);
@@ -56,8 +61,8 @@ onBeforeUnmount(() => {
 });
 
 const unselectFileItem = () => {
-  if (!isEmpty(fileStore.selectedFileIndex)) {
-    fileStore.selectedFileIndex = [];
+  if (!isEmpty(fileStore.selectedFileList)) {
+    fileStore.selectedFileList = [];
   }
 };
 
@@ -115,26 +120,54 @@ const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
   }
 };
 
+const onDropdownClickHandler = (item: LogFile, dropdownItem: DropdownOption, context: { e: MouseEvent }) => {
+  context.e.stopPropagation();
+  if (dropdownItem.value === "remove") {
+    fileRemoveHandler(item);
+  }
+};
+
+const fileRemoveHandler = (item: LogFile) => {
+  if (isEmpty(fileStore.sortSelectedFileIndex)) {
+    remove(fileStore.fileList, item);
+    NotifyPlugin("success", {
+      title: "File removed!",
+      content: `${item.file.name}`,
+      duration: 3000,
+      placement: "bottom-right",
+    });
+    emit("on-removed", [item]);
+  } else {
+    fileStore.removeFileListFromSelected();
+    NotifyPlugin("success", {
+      title: `${fileStore.selectedFileList.length} file(s) removed!`,
+      duration: 3000,
+      placement: "bottom-right",
+    });
+    emit("on-removed", [...fileStore.selectedFileList]);
+  }
+  fileStore.selectedFileList = [];
+};
+
 const firstFileItemIndex = ref(-1);
 const onShiftClickHandler = ($event: MouseEvent, item: LogFile, index: number) => {
   if ($event.ctrlKey) return;
 
-  if (fileStore.selectedFileIndex.includes(index)) {
-    fileStore.selectedFileIndex = pull(fileStore.selectedFileIndex, index);
+  if (fileStore.sortSelectedFileIndex.includes(index)) {
+    remove(fileStore.selectedFileList, item);
     if (isEmpty(fileStore.sortSelectedFileIndex)) {
       firstFileItemIndex.value = -1;
     }
   } else {
     if (isEmpty(fileStore.sortSelectedFileIndex)) {
-      fileStore.sortSelectedFileIndex.push(index);
+      fileStore.selectedFileList.push(item);
       firstFileItemIndex.value = index;
     } else {
       if (index === firstFileItemIndex.value + 1 || index === firstFileItemIndex.value - 1) {
         fileStore.sortSelectedFileIndex.push(index);
       } else {
-        const numberArr = generateNumberArray(firstFileItemIndex.value, index);
-        console.info(numberArr);
-        fileStore.selectedFileIndex = numberArr;
+        const sliceArr = sliceFileList(firstFileItemIndex.value, index);
+        fileStore.selectedFileList = sliceArr;
       }
     }
   }
@@ -142,8 +175,8 @@ const onShiftClickHandler = ($event: MouseEvent, item: LogFile, index: number) =
 
 const onCtrlClickHandler = ($event: MouseEvent, item: LogFile, index: number) => {
   if ($event.shiftKey) return;
-  if (fileStore.selectedFileIndex.includes(index)) {
-    fileStore.selectedFileIndex = pull(fileStore.selectedFileIndex, index);
+  if (fileStore.sortSelectedFileIndex.includes(index)) {
+    remove(fileStore.selectedFileList, item);
     if (isEmpty(fileStore.sortSelectedFileIndex)) {
       firstFileItemIndex.value = -1;
     }
@@ -151,8 +184,13 @@ const onCtrlClickHandler = ($event: MouseEvent, item: LogFile, index: number) =>
     if (isEmpty(fileStore.sortSelectedFileIndex)) {
       firstFileItemIndex.value = index;
     }
-    fileStore.sortSelectedFileIndex.push(index);
+    fileStore.selectedFileList.push(item);
   }
+};
+
+const sliceFileList = (start: number, end: number) => {
+  if (start < end) return slice(fileStore.fileList, start, end + 1);
+  else return slice(fileStore.fileList, end, start + 1);
 };
 </script>
 
@@ -165,6 +203,7 @@ export interface FileListEmits {
   (event: "on-load-before", file: LogFile): void;
   (event: "on-load-error", file: LogFile, error: Error): void;
   (event: "on-loaded", value: LogFile): void;
+  (event: "on-removed", value: LogFile[]): void;
 }
 </script>
 

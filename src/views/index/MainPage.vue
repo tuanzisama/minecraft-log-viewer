@@ -11,7 +11,7 @@
       </div>
     </section>
     <div class="main-container">
-      <file-list @on-load-before="onLoadBeforeHandler" @on-load-error="onLoadErrorHandler" @on-loaded="onLoadedHandler" />
+      <file-list @on-load-before="onLoadBeforeHandler" @on-load-error="onLoadErrorHandler" @on-loaded="onLoadedHandler" @on-removed="onRemovedHandler" />
       <div class="workspace-wrapper">
         <div class="fileinfo-container" @contextmenu.prevent>
           <div class="logfile-icon">
@@ -34,7 +34,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import MonacoEditor, { MonacoEditorExpose } from "../../components/MonacoEditor";
 import ThemeSwitch from "../../components/ThemeSwitch";
 import FileList from "../../components/FileList";
@@ -43,13 +43,21 @@ import { LogFile, useFileStore } from "../../plugins/store/modules/file";
 
 const appStore = useAppStore();
 const fileStore = useFileStore();
-const editorValue = ref(`[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Welcome!`);
+const editorValue = ref();
 const monacoEditorRef = ref<MonacoEditorExpose>();
 
 const defaultEditorTheme = computed(() => {
   if (appStore.theme === "light") return "vs";
   else if (appStore.theme === "dark") return "vs-dark";
 });
+
+onMounted(() => {
+  editorValue.value = getWelcomeText();
+});
+
+const getWelcomeText = () => {
+  return `[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Welcome!`;
+};
 
 const onThemeChangeHandler = (val: string) => {
   if (val === "light") {
@@ -70,6 +78,12 @@ const onLoadErrorHandler = (value: LogFile, error: Error) => {
 const onLoadedHandler = (value: LogFile) => {
   monacoEditorRef.value?.scrollToVertex();
   editorValue.value = value?.content ?? "";
+};
+
+const onRemovedHandler = (logFiles: LogFile[]) => {
+  if (fileStore.currentRecord !== null && logFiles.includes(fileStore.currentRecord)) {
+    editorValue.value = getWelcomeText();
+  }
 };
 </script>
 
