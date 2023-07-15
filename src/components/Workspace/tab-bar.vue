@@ -29,9 +29,6 @@ import { availableDecodeLabels } from "../../constants/available-decode-labels";
 import { useFileStore } from "../../plugins/store/modules/file";
 import { NotifyPlugin } from "tdesign-vue-next";
 
-const props = withDefaults(defineProps<WorkspaceTabBarProps>(), {});
-const emit = defineEmits<WorkspaceTabBarEmits>();
-
 const fileStore = useFileStore();
 
 const charsetList = availableDecodeLabels.map((label) => {
@@ -56,11 +53,7 @@ const onBatchApplyCharsetClickHandler = () => {
 };
 </script>
 
-<script lang="ts">
-export interface WorkspaceTabBarProps {}
-
-export interface WorkspaceTabBarEmits {}
-</script>
+<script lang="ts"></script>
 
 <style lang="less" scoped>
 .fileinfo-container {

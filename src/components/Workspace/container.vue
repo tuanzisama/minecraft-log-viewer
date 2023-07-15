@@ -6,8 +6,11 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
+import { useAppStore } from "../../plugins/store/modules/app";
 import MonacoEditor, { MonacoEditorExpose } from "../../components/MonacoEditor";
 import { useFileStore } from "../../plugins/store/modules/file";
+
+const appStore = useAppStore();
 
 const props = withDefaults(defineProps<WorkspaceProps>(), {});
 const emit = defineEmits<WorkspaceEmits>();
@@ -17,6 +20,11 @@ const monacoEditorRef = ref<MonacoEditorExpose>();
 const privateValue = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
+});
+
+const defaultEditorTheme = computed(() => {
+  if (appStore.theme === "light") return "vs";
+  else if (appStore.theme === "dark") return "vs-dark";
 });
 
 const fileStore = useFileStore();

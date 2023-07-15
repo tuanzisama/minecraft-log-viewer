@@ -13,11 +13,8 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Switch: typeof import('./src/components/ThemeSwitch/switch.vue')['default']
-    Tabbar: typeof import('./src/components/WorkspaceTabbar/tabbar.vue')['default']
     TabBar: typeof import('./src/components/Workspace/tab-bar.vue')['default']
-    TConfigProvider: typeof import('tdesign-vue-next')['ConfigProvider']
     TDropdown: typeof import('tdesign-vue-next')['Dropdown']
-    TPagination: typeof import('tdesign-vue-next')['Pagination']
     TPopup: typeof import('tdesign-vue-next')['Popup']
     TSelect: typeof import('tdesign-vue-next')['Select']
   }
