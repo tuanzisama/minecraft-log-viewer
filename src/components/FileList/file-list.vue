@@ -15,7 +15,7 @@
         placement="right-top"
         v-for="(item, index) in fileStore.fileList"
         :key="index"
-        :popup-props="{ overlayClassName: 'filelist-contextmenu', onVisibleChange: (visible, context) => onDropdownVisibleChangeHandler(item, visible, context) }"
+        :popup-props="{ overlayClassName: 'filelist-contextmenu', onVisibleChange: (visible: boolean, context: PopupVisibleChangeContext) => onDropdownVisibleChangeHandler(item, visible, context) }"
         :min-column-width="300"
         @click="(dropdownItem, context) => onDropdownClickHandler(item, dropdownItem, context)"
       >
