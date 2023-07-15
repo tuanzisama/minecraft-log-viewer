@@ -56,6 +56,7 @@ const acceptExtension = [".log.gz", ".tar.gz", ".log"];
 const emit = defineEmits<FileListEmits>();
 const currentOpenDropdownLogFile = shallowRef<LogFile | null>(null);
 const firstFileItemIndex = ref(-1);
+const defaultCharset = "utf-8";
 
 const dropdownOptions = computed<DropdownOption[]>(() => {
   let selectFileSize = fileStore.selectedFileList.length;
@@ -64,7 +65,12 @@ const dropdownOptions = computed<DropdownOption[]>(() => {
 
   return [
     { content: isSelected ? `Select ${selectFileSize} file(s)...` : truncate(fileName, { length: 24 }), value: "file-info", divider: true },
-    { content: "Merge download...", value: "merge-download", disabled: !isSelected, prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "merge") },
+    {
+      content: "Merge download...",
+      value: "merge-download",
+      disabled: !isSelected,
+      prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "merge"),
+    },
     { content: "Remove", value: "remove", theme: "error", prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "delete") },
   ];
 });
@@ -107,9 +113,10 @@ const onFileChangeHandler = async (event: { target: any }) => {
       const logFile = {
         file,
         fileSize: prettyBytes(file.size),
-        content: null,
-        isTarGZ: fileExtension.endsWith(".gz"),
         fileLastModified: new Date(file.lastModified).toLocaleString(),
+        charset: defaultCharset,
+        isTarGZ: fileExtension.endsWith(".gz"),
+        decode: null,
       };
       fileStore.fileList.push(logFile);
     }
@@ -119,10 +126,13 @@ const onFileChangeHandler = async (event: { target: any }) => {
 const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
   if ($event.shiftKey) return;
   emit("on-load-before", item);
-  if (item.content == null) {
+  if (item.decode == null || item.decode.charsetBy !== item.charset) {
     const response = await loadFileContent(item);
     emit("on-loaded", item);
-    item.content = response;
+    item.decode = {
+      charsetBy: item.charset,
+      content: () => response ?? "",
+    };
     fileStore.currentRecord = item;
   } else {
     fileStore.currentRecord = item;
@@ -139,7 +149,7 @@ const loadFileContent = async (item: LogFile) => {
     } else {
       buffer = await item.file.arrayBuffer();
     }
-    const charsetTrasnformer = new CharsetTransformer({ label: props.charset });
+    const charsetTrasnformer = new CharsetTransformer({ label: item.charset });
     const response = charsetTrasnformer.decode(buffer);
 
     return response;
@@ -186,11 +196,11 @@ const fileMergeDownloadHandler = async () => {
   const mergeMsgLoading = MessagePlugin.loading("File merging...");
 
   for (let element of fileStore.selectedFileList) {
-    if (element.content == null) {
+    if (element.decode == null) {
       const response = await loadFileContent(element);
       contents.push(response as string);
     } else {
-      contents.push(element.content);
+      contents.push(element.decode.content());
     }
   }
 
@@ -207,7 +217,11 @@ const fileMergeDownloadHandler = async () => {
     content: `${fileStore.selectedFileList.length} file(s) are merge successfully.`,
     duration: 30000,
     placement: "bottom-right",
-    footer: () => [h("div", { class: "t-notification__detail" }, [h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`)])],
+    footer: () => [
+      h("div", { class: "t-notification__detail" }, [
+        h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`),
+      ]),
+    ],
   });
 };
 

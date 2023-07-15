@@ -11,59 +11,42 @@
       </div>
     </section>
     <div class="main-container">
-      <file-list charset="gb2312" @on-load-before="onLoadBeforeHandler" @on-load-error="onLoadErrorHandler" @on-change="onFilelistChangeHandler" @on-removed="onRemovedHandler" />
+      <file-list charset="gb2312" @on-load-before="onLoadBeforeHandler" @on-change="onFilelistChangeHandler" @on-removed="onRemovedHandler" />
       <div class="workspace-wrapper">
-        <div class="fileinfo-container" @contextmenu.prevent>
-          <div class="logfile-icon">
-            <img src="/logos/fabric.png" />
-          </div>
-          <div class="logfile-info">
-            <span class="logfile-info__name">{{ fileStore.currentRecord?.file.name }}</span>
-            <p class="logfile-info__desc">
-              <span class="logfile-info__size">{{ fileStore.currentRecord?.fileSize }}</span>
-              <span class="logfile-info__lastmodi">{{ fileStore.currentRecord?.fileLastModified }}</span>
-            </p>
-          </div>
-        </div>
-        <div class="workspace-container">
-          <monaco-editor ref="monacoEditorRef" :theme="defaultEditorTheme" v-model="editorValue" />
-        </div>
+        <work-space-tab-bar />
+        <work-space ref="workSpaceRef" v-model="editorValue" />
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from "vue";
-import MonacoEditor, { MonacoEditorExpose } from "../../components/MonacoEditor";
+import { onMounted, ref } from "vue";
 import ThemeSwitch from "../../components/ThemeSwitch";
 import FileList from "../../components/FileList";
+import { WorkSpaceTabBar, WorkSpace, WorkspaceExpose } from "../../components/Workspace";
 import { useAppStore } from "../../plugins/store/modules/app";
 import { LogFile, useFileStore } from "../../plugins/store/modules/file";
 
 const appStore = useAppStore();
 const fileStore = useFileStore();
-const editorValue = ref();
-const monacoEditorRef = ref<MonacoEditorExpose>();
 
-const defaultEditorTheme = computed(() => {
-  if (appStore.theme === "light") return "vs";
-  else if (appStore.theme === "dark") return "vs-dark";
-});
-
-onMounted(() => {
-  editorValue.value = getWelcomeText();
-});
+const editorValue = ref("");
+const workSpaceRef = ref<WorkspaceExpose>();
 
 const getWelcomeText = () => {
   return `[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Welcome!`;
 };
 
+onMounted(() => {
+  editorValue.value = getWelcomeText();
+});
+
 const onThemeChangeHandler = (val: string) => {
   if (val === "light") {
-    monacoEditorRef.value?.setTheme("vs");
+    workSpaceRef.value?.getEditorRef()?.setTheme("vs");
   } else if (val === "dark") {
-    monacoEditorRef.value?.setTheme("vs-dark");
+    workSpaceRef.value?.getEditorRef()?.setTheme("vs-dark");
   }
 };
 
@@ -71,13 +54,9 @@ const onLoadBeforeHandler = () => {
   editorValue.value = `[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Loading...`;
 };
 
-const onLoadErrorHandler = (value: LogFile, error: Error) => {
-  //   console.info(value, error.message);
-};
-
 const onFilelistChangeHandler = (value: LogFile) => {
-  monacoEditorRef.value?.scrollToVertex();
-  editorValue.value = value?.content ?? "";
+  workSpaceRef.value?.getEditorRef()?.scrollToVertex();
+  editorValue.value = value.decode?.content() ?? "";
 };
 
 const onRemovedHandler = (logFiles: LogFile[]) => {
@@ -154,44 +133,6 @@ const onRemovedHandler = (logFiles: LogFile[]) => {
       flex: 1;
       display: flex;
       flex-direction: column;
-      .fileinfo-container {
-        height: 60px;
-        margin-bottom: var(--theme-padding);
-        padding: calc(var(--theme-padding) / 2);
-        font-family: "JetBrains Mono", monospace;
-        .common-box();
-        .flex-hcenter();
-        .logfile-icon {
-          width: 40px;
-          height: 40px;
-          background-color: var(--theme-background);
-          border: 5px solid var(--theme-background);
-          border-radius: 5px;
-          margin-right: 10px;
-          transition: all 0.3s;
-          user-select: none;
-          img {
-            .img-contain();
-          }
-        }
-        .logfile-info {
-          display: flex;
-          flex-direction: column;
-          &__name {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 5px;
-          }
-          &__desc {
-            font-size: 10px;
-            font-size: 200;
-            opacity: 0.6;
-            span {
-              margin-right: 5px;
-            }
-          }
-        }
-      }
       .workspace-container {
         flex: 1;
         width: 100%;
