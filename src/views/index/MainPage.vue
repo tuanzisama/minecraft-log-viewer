@@ -11,7 +11,7 @@
       </div>
     </section>
     <div class="main-container">
-      <file-list charset="gb2312" @on-load-before="onLoadBeforeHandler" @on-change="onFilelistChangeHandler" @on-removed="onRemovedHandler" />
+      <file-list @on-load-before="onLoadBeforeHandler" @on-change="onFilelistChangeHandler" @on-removed="onRemovedHandler" />
       <div class="workspace-wrapper">
         <work-space-tab-bar />
         <work-space ref="workSpaceRef" v-model="editorValue" />

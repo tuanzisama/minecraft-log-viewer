@@ -47,9 +47,7 @@ import { isEmpty, remove, slice, truncate } from "lodash";
 import { DropdownOption, NotifyPlugin, MessagePlugin, PopupVisibleChangeContext, Button } from "tdesign-vue-next";
 import { downloadFile } from "../../utils/util";
 
-const props = withDefaults(defineProps<FileListProps>(), {
-  charset: "utf-8",
-});
+const props = withDefaults(defineProps<FileListProps>(), {});
 
 const fileStore = useFileStore();
 const acceptExtension = [".log.gz", ".tar.gz", ".log"];
@@ -267,9 +265,7 @@ const sliceFileList = (start: number, end: number) => {
 </script>
 
 <script lang="ts">
-export interface FileListProps {
-  charset: string;
-}
+export interface FileListProps {}
 
 export interface FileListEmits {
   (event: "on-load-before", file: LogFile): void;
