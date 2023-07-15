@@ -44,7 +44,7 @@ import { CharsetTransformer } from "../../utils/charset-transformer";
 import prettyBytes from "pretty-bytes";
 import { computed, h, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { isEmpty, remove, slice, truncate } from "lodash";
-import { DropdownOption, NotifyPlugin, PopupVisibleChangeContext, Button } from "tdesign-vue-next";
+import { DropdownOption, NotifyPlugin, MessagePlugin, PopupVisibleChangeContext, Button } from "tdesign-vue-next";
 import { downloadFile } from "../../utils/util";
 
 const props = withDefaults(defineProps<FileListProps>(), {
@@ -60,10 +60,12 @@ const firstFileItemIndex = ref(-1);
 const dropdownOptions = computed<DropdownOption[]>(() => {
   let selectFileSize = fileStore.selectedFileList.length;
   let fileName = currentOpenDropdownLogFile.value?.file.name ?? "";
+  let isSelected = currentOpenDropdownLogFile.value === null ? false : fileStore.selectedFileList.includes(currentOpenDropdownLogFile.value);
+
   return [
-    { content: truncate(fileName, { length: 24 }), value: "file-info", divider: true },
-    { content: "Merge download...", value: "merge-download", disabled: selectFileSize === 0, prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "merge") },
-    { content: selectFileSize === 0 ? "Remove" : `Remove ${selectFileSize} file(s)`, value: "remove", theme: "error", prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "delete") },
+    { content: isSelected ? `Select ${selectFileSize} file(s)...` : truncate(fileName, { length: 24 }), value: "file-info", divider: true },
+    { content: "Merge download...", value: "merge-download", disabled: !isSelected, prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "merge") },
+    { content: "Remove", value: "remove", theme: "error", prefixIcon: () => h("span", { class: "material-symbols-outlined" }, "delete") },
   ];
 });
 
@@ -150,37 +152,38 @@ const loadFileContent = async (item: LogFile) => {
 
 const onDropdownClickHandler = async (item: LogFile, dropdownItem: DropdownOption, context: { e: MouseEvent }) => {
   context.e.stopPropagation();
+
+  let isSelected = fileStore.selectedFileList.includes(item);
+  let selectItems = isSelected ? fileStore.selectedFileList : [item];
+
   if (dropdownItem.value === "merge-download") {
     await fileMergeDownloadHandler();
   } else if (dropdownItem.value === "remove") {
-    fileRemoveHandler(item);
+    fileRemoveHandler(selectItems);
   }
   fileStore.selectedFileList = [];
 };
 
-const fileRemoveHandler = (item: LogFile) => {
-  if (isEmpty(fileStore.sortSelectedFileIndex)) {
-    remove(fileStore.fileList, item);
-    NotifyPlugin("success", {
-      title: "File removed!",
-      content: `${item.file.name}`,
-      duration: 3000,
-      placement: "bottom-right",
-    });
-    emit("on-removed", [item]);
-  } else {
-    fileStore.removeFileListFromSelected();
-    NotifyPlugin("success", {
-      title: `${fileStore.selectedFileList.length} file(s) removed!`,
-      duration: 3000,
-      placement: "bottom-right",
-    });
-    emit("on-removed", [...fileStore.selectedFileList]);
+const fileRemoveHandler = (items: LogFile[]) => {
+  let fileListSize = fileStore.selectedFileList.length;
+  if (items.length === 1) {
+    fileListSize = items.length;
+    remove(fileStore.fileList, items[0]);
   }
+  fileStore.removeFileListFromSelected();
+  NotifyPlugin.success({
+    title: "File removed!",
+    content: `${fileListSize} file(s) are removed.`,
+    duration: 3000,
+    placement: "bottom-right",
+  });
+  emit("on-removed", [...fileStore.selectedFileList]);
 };
 
 const fileMergeDownloadHandler = async () => {
   const contents: string[] = [];
+
+  const mergeMsgLoading = MessagePlugin.loading("File merging...");
 
   for (let element of fileStore.selectedFileList) {
     if (element.content == null) {
@@ -193,13 +196,15 @@ const fileMergeDownloadHandler = async () => {
 
   const mergeFileBlob = new Blob([contents.join("")], { type: "text/plain;charset=utf8" });
   const blobSize = prettyBytes(mergeFileBlob.size);
+  MessagePlugin.close(mergeMsgLoading);
+
   const onClickHandler = () => {
     downloadFile(mergeFileBlob, `log-merge-${Date.now()}.log`);
     NotifyPlugin.close(fileMergeNotify);
   };
   const fileMergeNotify = NotifyPlugin.success({
     title: "File Merged!",
-    content: `${fileStore.selectedFileList.length} file(s) are merge successfully!`,
+    content: `${fileStore.selectedFileList.length} file(s) are merge successfully.`,
     duration: 30000,
     placement: "bottom-right",
     footer: () => [h("div", { class: "t-notification__detail" }, [h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`)])],
