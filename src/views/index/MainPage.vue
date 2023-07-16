@@ -1,5 +1,5 @@
 <template>
-  <div class="main-page" :theme-mode="appStore.theme">
+  <div class="main-page">
     <section class="main-header">
       <p>Minecraft Log Viewer</p>
       <div class="page-controll-box">
@@ -11,7 +11,12 @@
       </div>
     </section>
     <div class="main-container">
-      <file-list @on-load-before="onLoadBeforeHandler" @on-change="onFilelistChangeHandler" @on-removed="onRemovedHandler" />
+      <file-list
+        @on-load-before="onLoadBeforeHandler"
+        @on-load-error="onFileListLoadErrorHandler"
+        @on-change="onFilelistChangeHandler"
+        @on-removed="onRemovedHandler"
+      />
       <div class="workspace-wrapper">
         <work-space-tab-bar />
         <work-space ref="workSpaceRef" v-model="editorValue" />
@@ -21,12 +26,13 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref } from "vue";
+import { h, onMounted, ref } from "vue";
 import ThemeSwitch from "../../components/ThemeSwitch";
 import FileList from "../../components/FileList";
 import { WorkSpaceTabBar, WorkSpace, WorkspaceExpose } from "../../components/Workspace";
 import { useAppStore } from "../../plugins/store/modules/app";
 import { LogFile, useFileStore } from "../../plugins/store/modules/file";
+import { DialogPlugin } from "tdesign-vue-next";
 
 const appStore = useAppStore();
 const fileStore = useFileStore();
@@ -43,6 +49,7 @@ onMounted(() => {
 });
 
 const onThemeChangeHandler = (val: string) => {
+  document.documentElement.setAttribute("theme-mode", val);
   if (val === "light") {
     workSpaceRef.value?.getEditorRef()?.setTheme("vs");
   } else if (val === "dark") {
@@ -52,6 +59,21 @@ const onThemeChangeHandler = (val: string) => {
 
 const onLoadBeforeHandler = () => {
   editorValue.value = `[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Loading...`;
+};
+
+const onFileListLoadErrorHandler = (logFile: LogFile, error: Error) => {
+  DialogPlugin.alert({
+    header: `Throw an exception when loading file.`,
+    body: () => [
+      h("div", { class: "load-exception-dialog" }, [
+        h("p", {}, [h("span", "Name: "), h("span", logFile.file.name)]),
+        h("p", {}, [h("span", "Size: "), h("span", logFile.fileSize)]),
+        h("p", {}, [h("span", "Last-modified: "), h("span", logFile.fileLastModified)]),
+        h("div", { class: "exception-box" }, [h("pre", error.message ?? "unknown error.")]),
+      ]),
+    ],
+    confirmBtn: { content: "Fine", variant: "base", theme: "danger" },
+  });
 };
 
 const onFilelistChangeHandler = (value: LogFile) => {
@@ -74,28 +96,7 @@ const onRemovedHandler = (logFiles: LogFile[]) => {
   flex-direction: column;
   background-color: var(--theme-background);
   color: var(--theme-font-color);
-  --theme-padding: 20px;
-  --theme-box-border-radius: 10px;
   transition: all 0.3s;
-  &[theme-mode="light"] {
-    --theme-background: #f8f8f9;
-    --theme-box-background: darken(#f8f8f9, 10%);
-    --theme-font-color: #1f293f;
-    --theme-file-item-hover-color: #212121;
-    --theme-file-item-active-background: #b8b3b3;
-    --theme-file-item-selected-background: #d4d2d2;
-    --theme-file-item-selected-color: #2962ff;
-  }
-  &[theme-mode="dark"] {
-    --theme-background: #192227;
-    --theme-box-background: lighten(#192227, 10%);
-    --theme-font-color: #f5f5f5;
-    --theme-file-item-hover-color: #5f7a87;
-    --theme-file-item-active-background: #758085;
-    --theme-file-item-selected-background: #6a787e;
-    --theme-file-item-selected-color: #00e5ff;
-  }
-
   a {
     text-decoration: none;
     color: var(--theme-font-color);
@@ -140,6 +141,29 @@ const onRemovedHandler = (logFiles: LogFile[]) => {
         overflow: hidden;
         .common-box();
       }
+    }
+  }
+}
+</style>
+
+<style lang="less">
+.load-exception-dialog {
+  .exception-box {
+    padding: 10px;
+    border-radius: 10px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    .custom-scrollbar();
+    background-color: var(--theme-box-background);
+    margin-top: 20px;
+    &__title {
+      font-family: "JetBrains Mono", monospace;
+    }
+    pre {
+      width: 100%;
+      height: 100%;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
   }
 }

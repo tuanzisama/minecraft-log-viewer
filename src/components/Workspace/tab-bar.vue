@@ -31,9 +31,13 @@ import { NotifyPlugin } from "tdesign-vue-next";
 
 const fileStore = useFileStore();
 
-const charsetList = availableDecodeLabels.map((label) => {
-  return { label, value: label };
-});
+const charsetList = availableDecodeLabels.reduce(
+  (acc, label) => {
+    label = label.toUpperCase();
+    return acc.concat([{ label, value: label }]);
+  },
+  [{ label: "(Auto detect)", value: "AUTO_DETECT" }]
+);
 
 const charsetValue = computed<string | undefined>({
   get: () => fileStore.currentRecord?.charset ?? fileStore.globalCharset,

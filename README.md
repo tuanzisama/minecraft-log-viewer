@@ -23,7 +23,7 @@ Auto-decompress `.log.gz`, `.tar.gz` and read log file(s).
 
 ### In progress...
 - [ ] Auto-detect log type 👀
-- [ ] Merge log file(s) 🎞️
+- [x] Merge log file(s) 🎞️
 - [ ] Search in entire files 🔎
 - [ ] Localization 📃
 - [ ] Auto-detect log content charset 🕶️

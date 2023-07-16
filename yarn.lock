@@ -396,6 +396,11 @@ braces@^3.0.2, braces@~3.0.2:
   dependencies:
     fill-range "^7.0.1"
 
+chardet@^1.6.0:
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/chardet/-/chardet-1.6.0.tgz#d04ea6e254916770c0e15ab678cbc7864c967fd1"
+  integrity sha512-+QOTw3otC4+FxdjK9RopGpNOglADbr4WPFi0SonkO99JbpkTPbMxmdm4NenhF5Zs+4gPXLI1+y2uazws5TMe8w==
+
 chokidar@^3.5.3:
   version "3.5.3"
   resolved "https://registry.yarnpkg.com/chokidar/-/chokidar-3.5.3.tgz#1cf37c8707b932bd1af1ae22c0432e2acd1903bd"

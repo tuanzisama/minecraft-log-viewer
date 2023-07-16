@@ -1,12 +1,12 @@
 interface CharsetTransformerParams {
-  label: "utf-8" | "windows-1252" | "gb18030" | string;
+  label: "UTF-8" | "WINDOWS-1252" | "GB18030" | string;
 }
 
 export class CharsetTransformer {
   private options: CharsetTransformerParams;
 
   constructor(options?: CharsetTransformerParams) {
-    this.options = Object.assign({ label: "utf-8" }, options);
+    this.options = Object.assign({ label: "UTF-8" }, options);
   }
 
   private get decoder() {

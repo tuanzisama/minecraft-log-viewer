@@ -7,6 +7,17 @@ interface State {
   globalCharset: string;
 }
 
+export type LogFileDecodeResult = {
+  /**
+   * charset when decoding.
+   */
+  charsetBy: string;
+  /**
+   * decoded content.
+   */
+  content: () => string;
+};
+
 export interface LogFile {
   readonly file: File;
   readonly fileSize: string;
@@ -16,16 +27,7 @@ export interface LogFile {
    */
   charset: string;
   isTarGZ: boolean;
-  decode: {
-    /**
-     * charset when decoding.
-     */
-    charsetBy: string;
-    /**
-     * decoded content.
-     */
-    content: () => string;
-  } | null;
+  decode: LogFileDecodeResult | null;
 }
 
 export const useFileStore = defineStore("file", {
@@ -33,7 +35,7 @@ export const useFileStore = defineStore("file", {
     fileList: [],
     selectedFileList: [],
     currentRecord: null,
-    globalCharset: "utf-8",
+    globalCharset: "UTF-8",
   }),
   getters: {
     fileListSize: (state) => {

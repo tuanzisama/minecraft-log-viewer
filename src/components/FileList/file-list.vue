@@ -46,13 +46,14 @@ import { computed, h, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { isEmpty, remove, slice, truncate } from "lodash";
 import { DropdownOption, NotifyPlugin, MessagePlugin, PopupVisibleChangeContext, Button } from "tdesign-vue-next";
 import { downloadFile } from "../../utils/util";
+import chardet from "chardet";
 
 const fileStore = useFileStore();
 const acceptExtension = [".log.gz", ".tar.gz", ".log"];
 const emit = defineEmits<FileListEmits>();
 const currentOpenDropdownLogFile = shallowRef<LogFile | null>(null);
 const firstFileItemIndex = ref(-1);
-const defaultCharset = "utf-8";
+const defaultCharset = "AUTO_DETECT";
 
 const dropdownOptions = computed<DropdownOption[]>(() => {
   let selectFileSize = fileStore.selectedFileList.length;
@@ -102,10 +103,15 @@ const onReadySelectFileHandler = () => {
 };
 
 const onFileChangeHandler = async (event: { target: any }) => {
-  [...event.target!.files].forEach(async (file: File) => {
+  const filterFiles = [...event.target!.files].filter((file) => {
     const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
+    return acceptExtension.includes(fileExtension);
+  });
 
-    if (acceptExtension.includes(fileExtension)) {
+  if (!isEmpty(filterFiles)) {
+    const importLoading = MessagePlugin.loading("File importing...");
+    filterFiles.forEach(async (file: File) => {
+      const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
       const logFile = {
         file,
         fileSize: prettyBytes(file.size),
@@ -115,20 +121,29 @@ const onFileChangeHandler = async (event: { target: any }) => {
         decode: null,
       };
       fileStore.fileList.push(logFile);
-    }
-  });
+    });
+    MessagePlugin.close(importLoading);
+
+    NotifyPlugin.success({
+      title: "File Imported!",
+      content: `${filterFiles.length} file(s) are imported to viewer.`,
+      duration: 5000,
+      placement: "bottom-right",
+    });
+  }
 };
 
 const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
   if ($event.shiftKey) return;
   emit("on-load-before", item);
   if (item.decode == null || item.decode.charsetBy !== item.charset) {
-    const response = await loadFileContent(item);
+    const loadResponse = await loadFileContent(item);
     emit("on-loaded", item);
-    item.decode = {
-      charsetBy: item.charset,
-      content: () => response ?? "",
-    };
+
+    if (item.decode == null) {
+      item.charset = loadResponse?.charsetBy ?? defaultCharset;
+    }
+    item.decode = loadResponse;
     fileStore.currentRecord = item;
   } else {
     fileStore.currentRecord = item;
@@ -136,7 +151,7 @@ const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
   emit("on-change", item);
 };
 
-const loadFileContent = async (item: LogFile) => {
+const loadFileContent = async (item: LogFile): Promise<LogFile["decode"]> => {
   try {
     let buffer = null;
     if (item.isTarGZ) {
@@ -145,10 +160,15 @@ const loadFileContent = async (item: LogFile) => {
     } else {
       buffer = await item.file.arrayBuffer();
     }
-    const charsetTrasnformer = new CharsetTransformer({ label: item.charset });
+
+    const analyseCharsetDetectResult = chardet.detect(new Uint8Array(buffer));
+
+    const decodeCharset = analyseCharsetDetectResult ?? defaultCharset;
+
+    const charsetTrasnformer = new CharsetTransformer({ label: decodeCharset });
     const response = charsetTrasnformer.decode(buffer);
 
-    return response;
+    return { charsetBy: decodeCharset, content: () => response };
   } catch (error) {
     console.error(error);
     emit("on-load-error", item, error as Error);
@@ -194,7 +214,7 @@ const fileMergeDownloadHandler = async () => {
   for (let element of fileStore.selectedFileList) {
     if (element.decode == null) {
       const response = await loadFileContent(element);
-      contents.push(response as string);
+      contents.push(response?.content() ?? "");
     } else {
       contents.push(element.decode.content());
     }
@@ -264,8 +284,8 @@ const sliceFileList = (start: number, end: number) => {
 
 <script lang="ts">
 export interface FileListEmits {
-  (event: "on-load-before", file: LogFile): void;
-  (event: "on-load-error", file: LogFile, error: Error): void;
+  (event: "on-load-before", logFile: LogFile): void;
+  (event: "on-load-error", logFile: LogFile, error: Error): void;
   (event: "on-loaded", value: LogFile): void;
   (event: "on-change", value: LogFile): void;
   (event: "on-removed", value: LogFile[]): void;
