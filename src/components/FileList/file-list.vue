@@ -195,7 +195,9 @@ const fileRemoveHandler = (items: LogFile[]) => {
   if (items.length === 1) {
     fileListSize = items.length;
     remove(fileStore.fileList, items[0]);
+    fileStore.selectedFileList.push(items[0]);
   }
+  const isContainCurrent = fileStore.selectedFileList.includes(fileStore.currentRecord as LogFile);
   fileStore.removeFileListFromSelected();
   NotifyPlugin.success({
     title: "File removed!",
@@ -203,7 +205,7 @@ const fileRemoveHandler = (items: LogFile[]) => {
     duration: 3000,
     placement: "bottom-right",
   });
-  emit("on-removed", [...fileStore.selectedFileList]);
+  emit("on-removed", [...fileStore.selectedFileList], isContainCurrent);
 };
 
 const fileMergeDownloadHandler = async () => {
@@ -287,8 +289,8 @@ export interface FileListEmits {
   (event: "on-load-before", logFile: LogFile): void;
   (event: "on-load-error", logFile: LogFile, error: Error): void;
   (event: "on-loaded", value: LogFile): void;
-  (event: "on-change", value: LogFile): void;
-  (event: "on-removed", value: LogFile[]): void;
+  (event: "on-open", value: LogFile): void;
+  (event: "on-removed", value: LogFile[], containCurrent: boolean): void;
 }
 </script>
 

@@ -85,8 +85,8 @@ const onFilelistChangeHandler = (value: LogFile) => {
   editorValue.value = value.decode?.content() ?? "";
 };
 
-const onRemovedHandler = (logFiles: LogFile[]) => {
-  if (fileStore.currentRecord !== null && logFiles.includes(fileStore.currentRecord)) {
+const onRemovedHandler = (logFiles: LogFile[], isContainCurrent: boolean) => {
+  if (isContainCurrent) {
     editorValue.value = getWelcomeText();
   }
 };

@@ -53,6 +53,9 @@ export const useFileStore = defineStore("file", {
   },
   actions: {
     removeFileListFromSelected() {
+      if (this.currentRecord && this.selectedFileList.includes(this.currentRecord)) {
+        this.currentRecord = null;
+      }
       this.fileList = this.fileList.filter((f) => !this.selectedFileList.includes(f));
     },
     setCurrentRecordCharsetLabel(charsetLabel: string) {
