@@ -26,7 +26,7 @@ Auto-decompress `.log.gz`, `.tar.gz` and read log file(s).
 - [x] Merge log file(s) 🎞️
 - [ ] Search in entire files 🔎
 - [ ] Localization 📃
-- [ ] Auto-detect log content charset 🕶️
+- [x] Auto-detect log content charset 🕶️
 - [ ] Add .log syntax highlight to `Monaco Editor` ✨
 - [ ] UI improve 🤔
 - [ ] Log share 😏
