@@ -57,6 +57,10 @@ const onThemeChangeHandler = (val: string) => {
   }
 };
 
+onMounted(() => {
+  document.documentElement.setAttribute("theme-mode", appStore.theme);
+});
+
 const onLoadBeforeHandler = () => {
   editorValue.value = `[${new Date().toLocaleTimeString()}] [Minecraft Log Viewer] Loading...`;
 };
