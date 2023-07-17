@@ -6,17 +6,15 @@
     <div class="logfile-info">
       <span class="logfile-info__name">{{ fileStore.currentRecord?.file.name }}</span>
       <p class="logfile-info__desc">
-        <span class="logfile-info__size">{{ fileStore.currentRecord?.fileSize }}</span>
-        <span class="logfile-info__lastmodi">{{ fileStore.currentRecord?.fileLastModified }}</span>
+        <span class="logfile-info__size">{{ fileStore.currentRecord?.fileInfo.prettySize }}</span>
+        <span class="logfile-info__lastmodi">{{ fileStore.currentRecord?.fileInfo.prettyLastModified }}</span>
       </p>
     </div>
     <div class="workspace-controll-bar">
       <section>
         <t-select v-model="charsetValue" placeholder="Charset" :options="charsetList" style="width: 150px" filterable />
         <t-popup content="Apply charset to all files">
-          <span class="material-symbols-outlined" style="font-size: 18px; cursor: pointer" @click="onBatchApplyCharsetClickHandler">
-            published_with_changes
-          </span>
+          <span class="material-symbols-outlined" style="font-size: 18px; cursor: pointer" @click="onBatchApplyCharsetClickHandler"> published_with_changes </span>
         </t-popup>
       </section>
     </div>

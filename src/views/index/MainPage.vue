@@ -11,12 +11,7 @@
       </div>
     </section>
     <div class="main-container">
-      <file-list
-        @on-load-before="onLoadBeforeHandler"
-        @on-load-error="onFileListLoadErrorHandler"
-        @on-change="onFilelistChangeHandler"
-        @on-removed="onRemovedHandler"
-      />
+      <file-list @on-load-before="onLoadBeforeHandler" @on-load-error="onFileListLoadErrorHandler" @on-change="onFilelistChangeHandler" @on-removed="onRemovedHandler" />
       <div class="workspace-wrapper">
         <work-space-tab-bar />
         <work-space ref="workSpaceRef" v-model="editorValue" />
@@ -71,8 +66,8 @@ const onFileListLoadErrorHandler = (logFile: LogFile, error: Error) => {
     body: () => [
       h("div", { class: "load-exception-dialog" }, [
         h("p", {}, [h("span", "Name: "), h("span", logFile.file.name)]),
-        h("p", {}, [h("span", "Size: "), h("span", logFile.fileSize)]),
-        h("p", {}, [h("span", "Last-modified: "), h("span", logFile.fileLastModified)]),
+        h("p", {}, [h("span", "Size: "), h("span", logFile.fileInfo.prettySize)]),
+        h("p", {}, [h("span", "Last-modified: "), h("span", logFile.fileInfo.prettyLastModified)]),
         h("div", { class: "exception-box" }, [h("pre", error.message ?? "unknown error.")]),
       ]),
     ],
@@ -82,7 +77,7 @@ const onFileListLoadErrorHandler = (logFile: LogFile, error: Error) => {
 
 const onFilelistChangeHandler = (value: LogFile) => {
   workSpaceRef.value?.getEditorRef()?.scrollToVertex();
-  editorValue.value = value.decode?.content() ?? "";
+  editorValue.value = value.decode?.content ?? "";
 };
 
 const onRemovedHandler = (logFiles: LogFile[], isContainCurrent: boolean) => {

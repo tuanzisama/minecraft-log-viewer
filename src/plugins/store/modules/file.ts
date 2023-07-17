@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { readonly } from "vue";
 
 interface State {
   fileList: LogFile[];
@@ -15,18 +16,34 @@ export type LogFileDecodeResult = {
   /**
    * decoded content.
    */
-  content: () => string;
+  content: string;
 };
 
 export interface LogFile {
   readonly file: File;
-  readonly fileSize: string;
-  readonly fileLastModified: string;
+  readonly fileInfo: {
+    /**
+     * .gz file size
+     */
+    compressSize: number;
+    /**
+     * .gz file compress ratio
+     */
+    compressRatio: number;
+    /**
+     * .gz original size
+     */
+    originalSize: number;
+    readonly prettySize: string;
+    readonly prettyLastModified: string;
+    readonly prettyCompressSize: string;
+    readonly prettyOriginalSize: string;
+    readonly isGzip: boolean;
+  };
   /**
    * The decoding charset set by the file.
    */
   charset: string;
-  isTarGZ: boolean;
   decode: LogFileDecodeResult | null;
 }
 

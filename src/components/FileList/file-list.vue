@@ -39,16 +39,15 @@
 
 <script lang="ts" setup>
 import { LogFile, useFileStore } from "../../plugins/store/modules/file";
-import { DecompressZip } from "../../utils/decompress";
-import { CharsetTransformer } from "../../utils/charset-transformer";
 import prettyBytes from "pretty-bytes";
 import { computed, h, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { isEmpty, remove, slice, truncate } from "lodash";
 import { DropdownOption, NotifyPlugin, MessagePlugin, PopupVisibleChangeContext, Button } from "tdesign-vue-next";
 import { downloadFile } from "../../utils/util";
-import chardet from "chardet";
+import { useFileResolveHelper } from "../../hooks/file-resolve-helper";
 
 const fileStore = useFileStore();
+const fileResolveHelper = useFileResolveHelper();
 const acceptExtension = [".log.gz", ".tar.gz", ".log"];
 const emit = defineEmits<FileListEmits>();
 const currentOpenDropdownLogFile = shallowRef<LogFile | null>(null);
@@ -112,17 +111,29 @@ const onFileChangeHandler = async (event: { target: any }) => {
     const importLoading = MessagePlugin.loading("File importing...");
     filterFiles.forEach(async (file: File) => {
       const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
-      const logFile = {
+      const logFile: LogFile = {
         file,
-        fileSize: prettyBytes(file.size),
-        fileLastModified: new Date(file.lastModified).toLocaleString(),
+        fileInfo: {
+          isGzip: fileExtension.endsWith(".gz"),
+          compressSize: 0,
+          compressRatio: 0,
+          originalSize: file.size,
+          prettySize: prettyBytes(file.size),
+          prettyLastModified: new Date(file.lastModified).toLocaleString(),
+          prettyCompressSize: prettyBytes(0),
+          prettyOriginalSize: prettyBytes(0),
+        },
         charset: defaultCharset,
-        isTarGZ: fileExtension.endsWith(".gz"),
         decode: null,
       };
-      fileStore.fileList.push(logFile);
+      fileResolveHelper.resolve(logFile);
     });
     MessagePlugin.close(importLoading);
+
+    fileResolveHelper.on("onResolved", ($logFile) => {
+      console.info("fileResolveHelper#onResolved--" + $logFile.file.name);
+      fileStore.fileList.push($logFile);
+    });
 
     NotifyPlugin.success({
       title: "File Imported!",
@@ -135,46 +146,53 @@ const onFileChangeHandler = async (event: { target: any }) => {
 
 const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
   if ($event.shiftKey) return;
-  emit("on-load-before", item);
-  if (item.decode == null || item.decode.charsetBy !== item.charset) {
-    const loadResponse = await loadFileContent(item);
-    emit("on-loaded", item);
-
-    if (item.decode == null) {
-      item.charset = loadResponse?.charsetBy ?? defaultCharset;
-    }
-    item.decode = loadResponse;
-    fileStore.currentRecord = item;
-  } else {
-    fileStore.currentRecord = item;
-  }
+  fileStore.currentRecord = item;
   emit("on-change", item);
+
+  //   emit("on-load-before", item);
+  //   if (item.decode == null || item.decode.charsetBy !== item.charset) {
+  //     const loadResponse = await loadFileContent(item);
+  //     emit("on-loaded", item);
+
+  //     if (item.decode == null) {
+  //       item.charset = loadResponse?.charsetBy ?? defaultCharset;
+  //     }
+  //     item.decode = loadResponse;
+  //     fileStore.currentRecord = item;
+  //   } else {
+  //     fileStore.currentRecord = item;
+  //   }
+  //   emit("on-change", item);
 };
 
-const loadFileContent = async (item: LogFile): Promise<LogFile["decode"]> => {
-  try {
-    let buffer = null;
-    if (item.isTarGZ) {
-      const decompress = new DecompressZip();
-      buffer = await decompress.toArrayBuffer(item.file);
-    } else {
-      buffer = await item.file.arrayBuffer();
-    }
+// const loadFileContent = async (item: LogFile): Promise<LogFile["decode"]> => {
+//   try {
+//     let buffer = null;
+//     if (item.fileInfo.isGzip) {
+//       console.time("time usage");
+//       const decompress = new DecompressZip();
+//       //   buffer = await decompress.toArrayBuffer(item.file);
+//       const toBlob = await decompress.toBlob(item.file);
+//       console.info(toBlob);
+//       console.timeEnd("time usage");
+//     } else {
+//       buffer = await item.file.arrayBuffer();
+//     }
 
-    const analyseCharsetDetectResult = chardet.detect(new Uint8Array(buffer));
+//     const analyseCharsetDetectResult = chardet.detect(new Uint8Array(buffer));
 
-    const decodeCharset = analyseCharsetDetectResult ?? defaultCharset;
+//     const decodeCharset = analyseCharsetDetectResult ?? defaultCharset;
 
-    const charsetTrasnformer = new CharsetTransformer({ label: decodeCharset });
-    const response = charsetTrasnformer.decode(buffer);
+//     const charsetTrasnformer = new CharsetTransformer({ label: decodeCharset });
+//     const response = charsetTrasnformer.decode(buffer);
 
-    return { charsetBy: decodeCharset, content: () => response };
-  } catch (error) {
-    console.error(error);
-    emit("on-load-error", item, error as Error);
-    return null;
-  }
-};
+//     return { charsetBy: decodeCharset, content: response };
+//   } catch (error) {
+//     console.error(error);
+//     emit("on-load-error", item, error as Error);
+//     return null;
+//   }
+// };
 
 const onDropdownClickHandler = async (item: LogFile, dropdownItem: DropdownOption, context: { e: MouseEvent }) => {
   context.e.stopPropagation();
@@ -215,10 +233,10 @@ const fileMergeDownloadHandler = async () => {
 
   for (let element of fileStore.selectedFileList) {
     if (element.decode == null) {
-      const response = await loadFileContent(element);
-      contents.push(response?.content() ?? "");
+      //   const response = await loadFileContent(element);
+      //   contents.push(response?.content ?? "");
     } else {
-      contents.push(element.decode.content());
+      contents.push(element.decode.content);
     }
   }
 
@@ -235,11 +253,7 @@ const fileMergeDownloadHandler = async () => {
     content: `${fileStore.selectedFileList.length} file(s) are merge successfully.`,
     duration: 30000,
     placement: "bottom-right",
-    footer: () => [
-      h("div", { class: "t-notification__detail" }, [
-        h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`),
-      ]),
-    ],
+    footer: () => [h("div", { class: "t-notification__detail" }, [h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`)])],
   });
 };
 
