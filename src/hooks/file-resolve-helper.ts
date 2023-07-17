@@ -14,8 +14,6 @@ class FileResolveHelper extends EventEmitter<FileResolveHelperEvents> {
     this.#resolveWorker = new FileResolverWorker();
 
     this.#resolveWorker.onmessage = (event: MessageEvent<MessageData>) => {
-      console.info("#resolveWorker.onmessage", event.data.type);
-
       if (event.data.type === "resolve") {
         const data = event.data as MessageData<{ logFile: LogFile; result: LogFileDecodeResult }>;
         this.emit("onResolved", data.data.logFile);

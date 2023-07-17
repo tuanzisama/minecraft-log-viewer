@@ -39,6 +39,8 @@ export interface LogFile {
     readonly prettyCompressSize: string;
     readonly prettyOriginalSize: string;
     readonly isGzip: boolean;
+    readonly md5: string;
+    isLoaded: boolean;
   };
   /**
    * The decoding charset set by the file.
@@ -52,7 +54,7 @@ export const useFileStore = defineStore("file", {
     fileList: [],
     selectedFileList: [],
     currentRecord: null,
-    globalCharset: "UTF-8",
+    globalCharset: "AUTO_DETECT",
   }),
   getters: {
     fileListSize: (state) => {
@@ -86,6 +88,12 @@ export const useFileStore = defineStore("file", {
         file.charset = charsetLabel;
         return file;
       });
+    },
+    replaceLogFile(logFile: LogFile) {
+      const index = this.fileList.findIndex((f) => f.fileInfo.md5 === logFile.fileInfo.md5);
+      if (index !== -1) {
+        this.fileList[index] = logFile;
+      }
     },
   },
   persist: {

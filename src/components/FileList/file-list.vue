@@ -30,6 +30,7 @@
           @click.shift.stop="($event) => onShiftClickHandler($event, item, index)"
           @dblclick="($event) => onOpenLogFileHandler($event, item)"
         >
+          <t-loading size="small" v-if="!item.fileInfo.isLoaded" />
           <p class="file-item__name">{{ item.file.name }}</p>
         </li>
       </t-dropdown>
@@ -45,6 +46,7 @@ import { isEmpty, remove, slice, truncate } from "lodash";
 import { DropdownOption, NotifyPlugin, MessagePlugin, PopupVisibleChangeContext, Button } from "tdesign-vue-next";
 import { downloadFile } from "../../utils/util";
 import { useFileResolveHelper } from "../../hooks/file-resolve-helper";
+import file2md5 from "file2md5";
 
 const fileStore = useFileStore();
 const fileResolveHelper = useFileResolveHelper();
@@ -108,12 +110,14 @@ const onFileChangeHandler = async (event: { target: any }) => {
   });
 
   if (!isEmpty(filterFiles)) {
-    const importLoading = MessagePlugin.loading("File importing...");
     filterFiles.forEach(async (file: File) => {
       const fileExtension = file.name.substring(file.name.indexOf("."), file.name.length);
+      const md5 = await file2md5(file, { chunkSize: 3 * 1024 * 1024 });
+
       const logFile: LogFile = {
         file,
         fileInfo: {
+          md5,
           isGzip: fileExtension.endsWith(".gz"),
           compressSize: 0,
           compressRatio: 0,
@@ -122,27 +126,29 @@ const onFileChangeHandler = async (event: { target: any }) => {
           prettyLastModified: new Date(file.lastModified).toLocaleString(),
           prettyCompressSize: prettyBytes(0),
           prettyOriginalSize: prettyBytes(0),
+          isLoaded: false,
         },
         charset: defaultCharset,
         decode: null,
       };
       fileResolveHelper.resolve(logFile);
-    });
-    MessagePlugin.close(importLoading);
-
-    fileResolveHelper.on("onResolved", ($logFile) => {
-      console.info("fileResolveHelper#onResolved--" + $logFile.file.name);
-      fileStore.fileList.push($logFile);
+      fileStore.fileList.push(logFile);
     });
 
-    NotifyPlugin.success({
-      title: "File Imported!",
-      content: `${filterFiles.length} file(s) are imported to viewer.`,
-      duration: 5000,
-      placement: "bottom-right",
+    fileResolveHelper.on("onResolved", (loadedLogFile) => {
+      fileStore.replaceLogFile(loadedLogFile);
     });
+
+    // NotifyPlugin.success({
+    //   title: "File Imported!",
+    //   content: `${filterFiles.length} file(s) are imported to viewer.`,
+    //   duration: 5000,
+    //   placement: "bottom-right",
+    // });
   }
 };
+
+const fileImportHandler = () => {};
 
 const onOpenLogFileHandler = async ($event: MouseEvent, item: LogFile) => {
   if ($event.shiftKey) return;
@@ -253,7 +259,11 @@ const fileMergeDownloadHandler = async () => {
     content: `${fileStore.selectedFileList.length} file(s) are merge successfully.`,
     duration: 30000,
     placement: "bottom-right",
-    footer: () => [h("div", { class: "t-notification__detail" }, [h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`)])],
+    footer: () => [
+      h("div", { class: "t-notification__detail" }, [
+        h(Button, { theme: "primary", variant: "text", onClick: onClickHandler }, `Download (${blobSize})`),
+      ]),
+    ],
   });
 };
 

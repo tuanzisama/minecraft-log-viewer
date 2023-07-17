@@ -7,7 +7,7 @@ declare var self: DedicatedWorkerGlobalScope;
 export {};
 
 const resolvers = {
-  resolve: async (logFile: LogFile) => {
+  resolve: async (logFile: LogFile, defaultCharset: string) => {
     try {
       let buffer = null;
       if (logFile.fileInfo.isGzip) {
@@ -21,12 +21,17 @@ const resolvers = {
       logFile.fileInfo.compressSize = buffer.byteLength;
       logFile.fileInfo.compressRatio = 1 - logFile.fileInfo.compressSize / logFile.fileInfo.originalSize;
 
-      const analyseCharsetDetectResult = chardet.detect(new Uint8Array(buffer));
-      const chatset = analyseCharsetDetectResult ?? "UTF-8";
+      let chatset = "UTF-8";
+      if (logFile.file.size <= 1024 * 20) {
+        const analyseCharsetDetectResult = chardet.detect(new Uint8Array(buffer));
+        if (analyseCharsetDetectResult) chatset = analyseCharsetDetectResult;
+      }
+
       const charsetTrasnformer = new CharsetTransformer({ label: chatset });
       const response = charsetTrasnformer.decode(buffer);
 
       console.timeEnd("TimeUsage---" + logFile.file.name);
+      logFile.fileInfo.isLoaded = true;
       logFile.decode = { charsetBy: chatset, content: response };
     } catch (error) {
       console.error(error);

@@ -15,6 +15,7 @@ declare module 'vue' {
     Switch: typeof import('./src/components/ThemeSwitch/switch.vue')['default']
     TabBar: typeof import('./src/components/Workspace/tab-bar.vue')['default']
     TDropdown: typeof import('tdesign-vue-next')['Dropdown']
+    TLoading: typeof import('tdesign-vue-next')['Loading']
     TPopup: typeof import('tdesign-vue-next')['Popup']
     TSelect: typeof import('tdesign-vue-next')['Select']
   }
